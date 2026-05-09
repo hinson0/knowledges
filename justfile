@@ -1,6 +1,6 @@
 # ── 知识库查询 ────────────────────────────────
 
-knowledges_dir := env_var('HOME') + "/knowledges/base"
+knowledges_dir := env_var('HOME') + "/knowledges/md"
 pdfs_dir := env_var('HOME') + "/knowledges/pdfs"
 
 # 显示所有 PDF 文件
