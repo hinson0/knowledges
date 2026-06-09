@@ -4,12 +4,12 @@
 
 ## usage 字段中 token 数量的关系
 
-| 字段 | 含义 | 示例值 |
-|---|---|---|
-| `input_tokens` | 总输入 token 数 | 5000 |
-| `cache_read_input_tokens` | 其中命中缓存的 token 数 | 3000 |
-| `cache_creation_input_tokens` | 本次新写入缓存的 token 数 | 0 |
-| `output_tokens` | 模型生成的输出 token 数 | 1500 |
+| 字段                          | 含义                      | 示例值 |
+| ----------------------------- | ------------------------- | ------ |
+| `input_tokens`                | 总输入 token 数           | 5000   |
+| `cache_read_input_tokens`     | 其中命中缓存的 token 数   | 3000   |
+| `cache_creation_input_tokens` | 本次新写入缓存的 token 数 | 0      |
+| `output_tokens`               | 模型生成的输出 token 数   | 1500   |
 
 - **未命中缓存的 token 数** = `input_tokens - cache_read_input_tokens`（即 2000）
 - `output_tokens` 与输入侧缓存无关，独立计费。
@@ -28,11 +28,11 @@
 
 假设定价：
 
-| 类别 | 单价（每百万 token） | 相对比例 |
-|---|---|---|
-| 输出 | $75 | — |
-| 输入（基础） | $15 | 基准 |
-| 缓存命中 | $1.5 | 基础价格的 10% |
+| 类别         | 单价（每百万 token） | 相对比例       |
+| ------------ | -------------------- | -------------- |
+| 输出         | $75                  | —              |
+| 输入（基础） | $15                  | 基准           |
+| 缓存命中     | $1.5                 | 基础价格的 10% |
 
 基于上方示例 token 数量：
 
