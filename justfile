@@ -1,12 +1,13 @@
 # ── 知识库查询 ────────────────────────────────
 
-knowledges_dir := env_var('HOME') + "/knowledges/md"
-pdfs_dir := env_var('HOME') + "/knowledges/pdfs"
+root_dir := justfile_directory()
+knowledges_dir := root_dir + "/md"
+pdfs_dir := root_dir + "/pdfs"
 
 # 显示所有 PDF 文件
 show:
     @echo "📁 {{knowledges_dir}}"; \
-     find {{knowledges_dir}} -type f -name "*.pdf" | sort
+    find "{{knowledges_dir}}" -type f -name "*.pdf" | sort
 # 将 knowledges 下所有 PDF 移动到 pdfs/当日/，同名 .md 后缀改为 .printed.md
 # 不传参 = pdfs/2026-04-21/；传 2 = pdfs/2026-04-21_2/（支持同一天多次运行）
 # PDF 同名冲突时自动加后缀 _2、_3...
