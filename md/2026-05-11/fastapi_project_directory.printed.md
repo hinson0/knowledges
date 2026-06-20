@@ -12,7 +12,7 @@
 myproject/
 ├── app/
 │   ├── main.py                  # 应用程序入口，创建 FastAPI 实例，挂载路由
-│   ├── core/
+│   ├──   /
 │   │   ├── config.py            # 环境变量加载、Pydantic Settings 配置类
 │   │   ├── security.py          # 认证、JWT、密码哈希等
 │   │   └── events.py            # 启动/关闭事件（lifespan）
