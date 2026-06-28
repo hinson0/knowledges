@@ -3,6 +3,6 @@
 python/.DS_Store
 
 
-**/*.pdf
+pdfs/
 **/*.zip
 .smart/
