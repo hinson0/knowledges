@@ -10,24 +10,22 @@ tmp/release     当前分支继续往后走 --- D --- E
 
 这几条命令分别在回答不同问题。
 
-`git rev-parse --short origin/release`
+`git rev-parse origin/release`
 
 意思是：告诉我当前远端 `release` 分支最新提交是谁。
 
-你这里是：
-
 ```text
-origin/release = 82aa857c5
+origin/release = 82aa857c5xxx
 ```
 
-`git merge-base HEAD origin/release | cut -c1-9`
+`git merge-base HEAD origin/release`
 
 意思是：找出“当前分支 HEAD”和“origin/release”最近的共同祖先。
 
 如果结果也等于 `origin/release`：
 
 ```text
-merge-base = 82aa857c5
+merge-base = 82aa857c5xxx
 ```
 
 那就说明当前分支包含完整的 `origin/release`，是从 `release` 上继续长出来的。
