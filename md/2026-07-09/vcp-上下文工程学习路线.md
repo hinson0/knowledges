@@ -2,6 +2,18 @@
 
 > 学习对象：`~/ce_repos/vcp`（apps/agent 运行时的 LLM 上下文工程）
 > 前置要求：会读 TypeScript；不需要懂 VCP 业务。
+> 环境要求：Node 24（`nvm use 24`）+ 仓库根先跑 `pnpm install`，否则单测/脚本跑不起来。
+
+## 配套分站文档（同目录，自包含，含已验证的实践命令与自测题答案）
+
+1. [第1站 · 单次调用的prompt组装](./vcp-上下文工程-第1站-单次调用的prompt组装.md)
+2. [第2站 · 事件溯源与消息重建](./vcp-上下文工程-第2站-事件溯源与消息重建.md)（最重要的一站）
+3. [第3站 · skill系统与按需加载](./vcp-上下文工程-第3站-skill系统与按需加载.md)
+4. [第4站 · system-prompt分层组装与守卫测试](./vcp-上下文工程-第4站-system-prompt分层组装与守卫测试.md)
+5. [第5站 · prompt缓存断点与成本工程](./vcp-上下文工程-第5站-prompt缓存断点与成本工程.md)
+6. [第6站 · 护栏与降级（含全线回顾）](./vcp-上下文工程-第6站-护栏与降级.md)
+
+分站文档内的命令均已实机验证；本文下方各站小节里的行内命令若与分站文档不一致，以分站文档为准。
 
 ## 〇、心智模型：只有一个问题
 
@@ -129,14 +141,15 @@ VCP 的做法是**两套表示**：
 
 ## 动手实验（比读代码更有效）
 
-**实验 A：体验守卫测试怎么锁 prompt**
+**实验 A：体验守卫测试怎么锁 prompt**（完整步骤见第 4 站文档，已实测）
 把 `workspace-domain-contract.ts` 里任意一条红线行改一个词 → 跑
-`pnpm --filter @vcp/agent test -- workspace-domain-contract` → 看测试怎么红 → 恢复。
+`cd apps/agent && pnpm exec vitest run src/agents/workspace/workspace-domain-contract.test.ts` → 看测试怎么红 → `git checkout --` 恢复 → 复跑确认绿。
 体感：prompt 漂移在这个仓库是测试期可捕获的缺陷。
+（注意：`pnpm --dir apps/agent test -- <文件>` 的过滤参数会被忽略、跑成全量；单文件必须用 `exec vitest run` 形式。）
 
-**实验 B：体验 skill 索引的动态性**
-在 `skills/page-editing/` 下新建一个 `my-test/SKILL.md`（抄旁边的 frontmatter，`model_invocable: true`）→ 跑
-`pnpm --filter @vcp/agent test -- workspace-system-prompt` 或写个小脚本调 `listModelInvocableSkills()` → 确认新 skill 自动出现在索引 → 删掉。
+**实验 B：体验 skill 索引的动态性**（完整步骤见第 3 站文档，已实测 7→8→7）
+在 `skills/page-editing/` 下新建一个 `my-test-skill/SKILL.md`（抄 motion-and-scroll 的 frontmatter，`model_invocable: true`）→ 用 tsx 脚本调 `listModelInvocableSkills()` 确认新 skill 入列 → 删掉 → 再跑确认消失。
+注意 FsSkillSource 有进程级缓存，增删前后必须是两个独立进程。
 体感：索引是扫盘动态生成的，加 skill 不需要改任何注册代码。
 
 ---
