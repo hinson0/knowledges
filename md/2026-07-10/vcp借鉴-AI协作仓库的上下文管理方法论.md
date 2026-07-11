@@ -242,6 +242,97 @@ related_docs:
 
 ---
 
-## 5. 与运行时上下文工程的关系
+## 5. FAQ：三个关键疑问
+
+### Q1：这些代码相关的 MD 文档最初是怎么被创建出来的？
+
+不是 AI 随手创建，有四条明确的创建路径，各有触发时机：
+
+1. **项目初始化时的骨架（人定 + 脚本锁存在性）**：`docs/` 的目录职责表（context/api/agent/adr/runbooks…）是搭项目时定好的信息架构；15 篇核心文档清单硬编码在审计脚本里（`context_audit.ts:27-43`），缺一篇审计就失败。所以骨架不是"有空再写"，而是从第一天就必须在。
+2. **feature 开工时**：按工作流先写 `docs/superpowers/specs/YYYY-MM-DD-<slug>-design.md`（设计）和 plans/（执行计划）——这是增量文档的主要出生点。
+3. **重大决策时**：新建 `docs/adr/ADR-NNNN-*.md`（SKILL.md Phase 5 规定命名与结构）。
+4. **feature 收口时**：更新 `CURRENT_STATUS.md` 等既有文档，而不是新建。
+
+frontmatter 的 `source_files` 是 **AI 写这篇文档时自己填的**：SKILL.md 硬规则要求"文档里引用源码必须用仓库路径"，写作过程中讨论到哪些代码文件，就把路径列进 frontmatter。
+
+**git 证据实例**（以 `docs/architecture/` 下文件为例）：
+- 骨架路径：`SYSTEM_OVERVIEW.md`、`DATA_MODEL.md`、`PROJECT_BRIEF.md`、`ROADMAP.md` 全部诞生于同一个初始化提交 `63c2fdc6 2026-05-15 "chore: initialize VCP architecture baseline"`，且都在 coreDocs 硬编码清单里。
+- **feature 随批创建路径（日常最主要）**：`SITE_OPERATION_LOCKS.md` 诞生于实现站点操作锁的提交（`7cb81b18 2026-05-29 "修复：完善站点操作锁和发布交互"`）；`DEPLOY_BUILD_FLOW.md` 诞生于接入 Cloudflare 发布闭环的提交。即 **AI 实现新机制时被 Stop hook + 映射表逼着，在同一批提交里为机制写下常青文档**——文档创建不是专门任务，是 feature 提交的一部分。
+
+三类文档的分工（易混淆，务必分清）：
+
+| 类型 | 位置 | 性质 | 更新策略 |
+|---|---|---|---|
+| 常青文档 | `docs/architecture/*.md` 等 | 机制**现状**的权威描述 | 机制变了就改，60 天审计保新鲜 |
+| spec/plan | `docs/superpowers/**/YYYY-MM-DD-*.md` | 某次 feature 的设计与执行 | 日期定格，做完标 status |
+| ADR | `docs/adr/ADR-NNNN-*.md` | 已拍板的**决策** | 永不改写，推翻就新写一篇标 superseded |
+
+**ADR = Architecture Decision Record（架构决策记录）**，通用软件工程实践。固定结构：状态 / 背景 / 决策 / 后果 / **考虑过的替代方案（含拒绝理由）**。对 AI 的价值：防止新 session 把已否决的方案再提一遍、或把已定边界顺手改掉——"替代方案"一节等于直接告诉 AI「这条路走过了，别再走」。
+
+### Q2：后续改了代码，AI 怎么"回来更新"文档？（完整闭环）
+
+"回来更新"不是自动魔法，是三个机制合力，按时间线：
+
+```
+AI 改完代码，想结束会话
+  │
+  ├─ ① Stop hook 检查 git 改动路径：
+  │    命中代码目录前缀（apps/、packages/…）但本次没碰 docs/**
+  │    → 拦住，不许收口
+  │
+  ├─ ② 被拦后 AI 怎么知道更新哪篇？两个索引：
+  │    a) SKILL.md 的「代码目录→文档」映射表（改 apps/agent → 查 docs/agent/*）
+  │    b) source_files 反向检索：grep docs/ 下哪些文档的 frontmatter
+  │       列了我刚改的文件 → 找到"声称依赖这个文件"的所有文档
+  │
+  ├─ ③ 两条出路（都留痕）：
+  │    a) 更新文档，同时刷新 last_updated、增删 source_files
+  │    b) 判断真不用更新 → 在 todo Review 里写「文档同步判断：
+  │       无需更新，因为…」→ 放行，但这个决定被记录
+  │
+  └─ ④ 漏网兜底：就算这次被理由放行/改动没命中前缀，
+       60 天 STALE 审计保证这篇文档最多 60 天后被强制回看，
+       回看时对照 source_files 里的代码现状，过期就更新
+```
+
+所以「source_files 是软索引」指的就是第 ② 步 b：它是给 AI **检索用**的导航数据（"改了这些文件该回来更新我"），执行主体是 AI，不是脚本。
+
+### Q3："脚本只采集、不校验"是什么意思？
+
+仓库里有两个脚本，对 frontmatter 字段的态度完全不同：
+
+- **`doc_inventory.ts`（采集器）**：扫全部 .md，把 frontmatter 各字段（title/status/owner/last_updated/source_files/related_docs）**原样抄录**进 `docs/_generated/docs_inventory.json`。它不做任何对错判断。
+- **`context_audit.ts`（校验器）**：只对 `last_updated` 做硬校验（必须存在、日期合法、距今 ≤60 天，否则 exit 1 让构建失败），外加 frontmatter 存在性、断链、核心文档存在、AGENTS.md 体积。**它完全不碰 source_files**。
+
+用一个具体例子看分界：
+
+| 你做了什么 | docs:audit 的反应 |
+|---|---|
+| 在 `source_files` 里写一个不存在的路径 `foo/bar.ts` | **照样通过**——脚本不检查这个字段 |
+| `source_files` 里列的代码上周改了，文档没动 | **照样通过**——脚本不比对代码 mtime |
+| 把 `last_updated` 改成 90 天前的日期 | **立刻失败**——STALE |
+
+"采集不校验"就是指 `source_files` 属于前一类：机器只负责抄录存档，从不基于它做自动判定。它的全部价值在于**被读**——被下一个 AI session 读、被人读。
+
+为什么这样设计：如果机器要校验 source_files（路径存在性、mtime 比对"代码改了文档没改"），实现复杂且误报极多（重构挪个文件全线爆红）。VCP 的分工是：**机器管时间**（last_updated 挂钟，简单可靠），**AI 管语义**（哪些代码对应哪些文档、这次改动是否影响文档内容），**hook 管底线**（至少动了 docs 或写了理由）。
+
+### Q4：Stop hook 的「逼」具体落在哪几行代码？
+
+机制 = **拒绝结束回合 + 把整改指令作为 reason 喂回 AI**。链路（均在 `.codex/hooks/policy.ts`）：
+
+1. `.codex/hooks.json` 把 policy.ts 挂到 `Stop` 事件（timeout 60s）——AI 想结束回合时宿主先跑它。
+2. `evaluate()`（:685-690）：`stop_hook_active` 为 true 直接放行（防死循环），否则进 `evaluateStop`。
+3. `gitChangedPaths()`（:183）：`git status --short --untracked-files=all` 收集改动路径。
+4. 核心闸门（:655-659）：`needsDocSyncReminder(changedPaths) && !todoHasDocSyncJudgment()` → `block(...)`。
+   - `needsDocSyncReminder`（:244-252）= 「任一改动 startsWith 代码目录前缀」且「无任一改动 startsWith docs//context/」——纯字符串前缀匹配，零语义分析。
+   - 逃生门 `todoHasDocSyncJudgment`（:224-230）：Review 含"文档同步判断"或正则 `/无需(更新|同步).*(docs|context|文档)/`。
+5. `block()`（:167-169）返回 `{ decision: "block", reason }`；宿主不结束回合，把 reason 作为消息喂回 AI。**reason 即 prompt**：文案本身就是可执行的整改指令（二选一：改文档 / 写理由）。
+6. AI 整改后再次结束，宿主带 `stop_hook_active=true`，放行——语义是「保证收到过一次明确指令」，不是死锁。
+
+同一个 evaluateStop 里按序还有三道：无 Review 拦（:637-641）→ API surface 加强版（:652，要求同时更新 openapi/** 和 docs/api/**，排除测试文件）→ format:check 实跑（:661）。
+
+设计取舍：前缀匹配必然误报，对策不是提高精度而是逃生门留痕；闸门是字符串级的，防得住「没做」防不住「敷衍」，敷衍靠约定层（Review 必须含验证记录）+ policy.test.ts 锁住闸门本身。
+
+## 6. 与运行时上下文工程的关系
 
 本文讲的是「仓库层」（给开发用 AI 的记忆管理）。同仓库还有一套「运行时层」（VCP 产品自身给 LLM agent 组装上下文的工程：事件溯源、skill 按需加载、缓存断点等），学习材料见 `~/knowledges/md/2026-07-09/vcp-上下文工程学习路线.md` 及六站分册。两层同构：都遵循「单一事实源 + 有损留痕 + 确定性重建 + fail-soft/硬闸门」。
